@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WWII Cause Chain</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #201d19;
+      --muted: #6b6258;
+      --line: #d4cab9;
+      --accent: #8b3a3a;
+      --accent-dark: #672828;
+      --blue: #2f5f73;
+      --gold: #8a6424;
+      --green: #4c6f43;
+      --shadow: 0 10px 24px rgba(31, 27, 22, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: #231d1c;
+      color: #f4eadb;
+      border-bottom: 4px solid var(--accent);
+      width: 100%;
+      max-width: 100%;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+    }
+
+    .meta {
+      color: #cdbfae;
+      font-size: 0.86rem;
+    }
+
+    .status {
+      margin-left: auto;
+      color: #f4eadb;
+      font-size: 0.9rem;
+      min-width: 12ch;
+      text-align: right;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 18px;
+      background: #e7dece;
+      border-bottom: 1px solid var(--line);
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    button {
+      border: 1px solid var(--accent);
+      background: var(--panel);
+      color: var(--accent-dark);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      min-height: 38px;
+    }
+
+    button:hover { background: #f7ebe4; }
+    button.active {
+      background: var(--accent);
+      color: #fff8ed;
+    }
+
+    .toolbar {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(260px, 350px) 1fr;
+      gap: 16px;
+      padding: 16px;
+      min-height: 0;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .bank {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbf5eb;
+    }
+
+    .panel-head h2 {
+      margin: 0 0 4px;
+      font-size: 1rem;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .cards {
+      padding: 12px;
+      overflow-y: auto;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .card {
+      position: relative;
+      min-width: 0;
+      background: #fffaf1;
+      border: 1px solid #cfc1aa;
+      border-left: 5px solid var(--accent);
+      border-radius: 7px;
+      padding: 10px 11px;
+      box-shadow: 0 4px 10px rgba(37, 31, 24, 0.08);
+      cursor: grab;
+      user-select: none;
+    }
+
+    .card:focus {
+      outline: 3px solid rgba(47, 95, 115, 0.25);
+      outline-offset: 2px;
+    }
+
+    .card.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .card.selected {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(47, 95, 115, 0.2);
+    }
+
+    .card.pulled {
+      border-left-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(76, 111, 67, 0.22), 0 4px 10px rgba(37, 31, 24, 0.08);
+    }
+
+    .card h3 {
+      margin: 0 0 5px;
+      font-size: 0.98rem;
+      line-height: 1.2;
+    }
+
+    .card p {
+      margin: 0;
+      color: #4a4238;
+      font-size: 0.88rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .card .cue {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-style: italic;
+      line-height: 1.25;
+    }
+
+    .order-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      margin: 0 8px 0 0;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff8ed;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .card-actions button {
+      min-height: 30px;
+      padding: 5px 8px;
+      font-size: 0.82rem;
+    }
+
+    .board-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .instructions,
+    .guide,
+    .response {
+      padding: 12px 14px;
+      background: #fffdf8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .instructions p,
+    .guide p,
+    .response p {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .instructions p:last-child,
+    .guide p:last-child,
+    .response p:last-child {
+      margin-bottom: 0;
+    }
+
+    .guide {
+      background: #f8f0e4;
+      border-left: 5px solid var(--blue);
+    }
+
+    .guide h2,
+    .response h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .guide ul {
+      margin: 0 0 8px 1.2rem;
+      padding: 0;
+      color: #3f362f;
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    .guide li { margin: 0 0 4px; }
+
+    .chain-panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 430px;
+      overflow: hidden;
+    }
+
+    .chain-head {
+      padding: 11px 12px;
+      background: #2b2522;
+      color: #f9efe0;
+      border-radius: 8px 8px 0 0;
+      border-top: 5px solid var(--gold);
+    }
+
+    .chain-head h2 {
+      margin: 0;
+      font-size: 1.02rem;
+    }
+
+    .chain-head span {
+      display: block;
+      margin-top: 3px;
+      color: #d2c3ad;
+      font-size: 0.82rem;
+      font-weight: normal;
+    }
+
+    .chain {
+      min-height: 360px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
+      background: rgba(255, 253, 248, 0.75);
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      overflow-y: auto;
+    }
+
+    .chain.over,
+    .cards.over {
+      background: #f7eadb;
+      box-shadow: inset 0 0 0 2px rgba(139, 58, 58, 0.25);
+    }
+
+    .chain-empty {
+      min-height: 170px;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      border: 1px dashed #b9aa92;
+      border-radius: 7px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    .arrow {
+      justify-self: center;
+      color: var(--accent-dark);
+      font-size: 1.15rem;
+      line-height: 1;
+      opacity: 0.8;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      font: 0.95rem Georgia, "Times New Roman", serif;
+      background: #fffaf1;
+      color: var(--ink);
+    }
+
+    .summary {
+      min-height: 86px;
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f0e4;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #3f362f;
+      font-size: 0.9rem;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+
+    footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      background: #e7dece;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 1100px) {
+      main {
+        grid-template-columns: 1fr;
+        width: 100%;
+        padding: 10px;
+        overflow-x: hidden;
+      }
+
+      .bank {
+        max-height: 42vh;
+        width: 100%;
+      }
+
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      h1 { font-size: 1.05rem; }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr;
+        overflow-x: hidden;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr;
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .toolbar button,
+      .tabs > button {
+        min-width: 0;
+        width: 100%;
+      }
+
+      button { padding: 8px 10px; }
+
+      .panel,
+      .instructions,
+      .guide,
+      .response,
+      .chain-panel,
+      .card {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .chain-panel { min-height: 300px; }
+      .chain { min-height: 240px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>WWII Cause Chain</h1>
+        <div class="meta">Social Studies 10 - Wars and Canada in the World</div>
+      </div>
+      <div class="status" id="status">0 / 10 in chain</div>
+    </header>
+
+    <nav class="tabs" aria-label="Activity tools">
+      <button id="addBtn" type="button">Add Selected</button>
+      <div class="toolbar">
+        <button id="clearBtn" type="button">Clear Selection</button>
+        <button id="resetBtn" type="button">Reset Chain</button>
+        <button id="guideBtn" type="button">Historian Guide</button>
+      </div>
+    </nav>
+
+    <main>
+      <section class="panel bank" aria-labelledby="bankTitle">
+        <div class="panel-head">
+          <h2 id="bankTitle">Card Bank</h2>
+          <p>Drag a card, or tap a card and then tap Add Selected or the chain.</p>
+        </div>
+        <div class="cards" id="cardBank" aria-label="Unsorted cause cards"></div>
+      </section>
+
+      <section class="board-wrap">
+        <div class="instructions">
+          <p>Build a chain showing what had to happen before what. More than one chain can work if your arrows make sense. Then pull one link: which cause could you remove to make World War II least likely?</p>
+        </div>
+
+        <section id="guidePanel" class="guide" hidden aria-live="polite"></section>
+
+        <section class="panel chain-panel" aria-labelledby="chainTitle">
+          <div class="chain-head">
+            <h2 id="chainTitle">Cause Chain <span>earlier pressure &rarr; open doors &rarr; final spark</span></h2>
+          </div>
+          <div class="chain" id="chainZone" aria-label="Ordered cause chain"></div>
+        </section>
+
+        <section class="response">
+          <h2>Pull One Link</h2>
+          <p id="pulledResult">No link pulled yet.</p>
+          <textarea id="responseText" placeholder="Which cause would you remove to make WWII least likely? Why?"></textarea>
+          <button id="copyBtn" type="button">Copy Summary</button>
+          <div class="summary" id="summaryBox"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      The goal is a defensible chain, not a perfect hidden answer. Use the card evidence.
+    </footer>
+  </div>
+
+  <script>
+    const cards = [
+      {
+        id: "versailles",
+        title: "Versailles humiliation",
+        text: "The 1919 peace treaty blamed Germany for WWI, made it pay huge sums, and forced it to give up land. Many Germans felt humiliated and wanted the treaty undone.",
+        cue: "Since 1919."
+      },
+      {
+        id: "communism",
+        title: "Fear of communism",
+        text: "After the Russian Revolution, the USSR said capitalism should be abolished. Britain, France, the US, and Canada sent troops into Russia to fight the new communist government. They failed, but the fear stayed.",
+        cue: "From 1917 onward."
+      },
+      {
+        id: "depression",
+        title: "The Depression",
+        text: "From 1929 economies collapsed and millions lost work. Desperate people became more willing to listen to extreme promises.",
+        cue: "From 1929."
+      },
+      {
+        id: "fascism",
+        title: "The rise of fascism",
+        text: "Fascist movements took power in Italy (1922) and Germany (1933). In Germany, the Nazis promised strength after humiliation and blamed enemies for Germany's problems.",
+        cue: "1920s&ndash;1930s."
+      },
+      {
+        id: "war-aims",
+        title: "Nazi war aims",
+        text: "Hitler said Germany needed Lebensraum: land in eastern Europe for Germans. That meant taking land from other countries and destroying or forcing out the people already there.",
+        cue: "Stated by 1933."
+      },
+      {
+        id: "league",
+        title: "A powerless League",
+        text: "The League of Nations was supposed to prevent war, but it had no army of its own. If a country chose aggression, the League could condemn it but could not really stop it.",
+        cue: "Through the 1920s&ndash;30s."
+      },
+      {
+        id: "expansion",
+        title: "Expansion unopposed",
+        text: "Japan seized Manchuria, Italy seized Ethiopia, Germany retook the Rhineland and absorbed Austria. Each time, no major power stopped the aggression.",
+        cue: "Through the 1930s."
+      },
+      {
+        id: "appeasement",
+        title: "Appeasement",
+        text: "At Munich in 1938, Britain and France let Hitler take the Sudetenland from Czechoslovakia, hoping he would then stop. Czechoslovakia was not at the table.",
+        cue: "1938."
+      },
+      {
+        id: "pact",
+        title: "The Nazi-Soviet pact",
+        text: "Germany and the USSR agreed not to fight each other. That freed Hitler to invade Poland without immediately fighting the Soviet Union too.",
+        cue: "August 1939."
+      },
+      {
+        id: "poland",
+        title: "The invasion of Poland",
+        text: "Germany invaded Poland. Two days later, Britain and France declared war.",
+        cue: "1 September 1939."
+      }
+    ];
+
+    const guideHtml = `
+      <h2>Historian guide</h2>
+      <p>This is a rough guide for checking your reasoning. A defensible chain can branch if the arrows make sense.</p>
+      <ul>
+        <li><strong>Strong chain:</strong> Versailles humiliation + Depression + fear of communism &rarr; rise of fascism &rarr; Nazi war aims &rarr; powerless League &rarr; expansion unopposed &rarr; appeasement &rarr; Nazi-Soviet pact &rarr; invasion of Poland.</li>
+        <li><strong>Fear of communism:</strong> can sit beside the early chain. It helps explain why some Western leaders tolerated fascism, delayed stronger action, and saw Hitler as useful against the USSR.</li>
+        <li><strong>Powerless League:</strong> can sit before expansion unopposed, or it can be named as the reason expansion went unopposed.</li>
+        <li><strong>Final spark:</strong> invasion of Poland.</li>
+      </ul>
+      <p><strong>Pull-one-link possibilities:</strong> students can defend several choices. Versailles, Depression, Nazi war aims, appeasement, and the Nazi-Soviet pact are all strong candidates if the explanation is clear.</p>
+    `;
+
+    const state = {
+      selectedId: null,
+      chain: [],
+      pulledId: null
+    };
+
+    const bank = document.getElementById("cardBank");
+    const chainZone = document.getElementById("chainZone");
+    const status = document.getElementById("status");
+    const guideBtn = document.getElementById("guideBtn");
+    const guidePanel = document.getElementById("guidePanel");
+    const pulledResult = document.getElementById("pulledResult");
+    const responseText = document.getElementById("responseText");
+    const summaryBox = document.getElementById("summaryBox");
+
+    function cardData(id) {
+      return cards.find(card => card.id === id);
+    }
+
+    function unplacedCards() {
+      return cards.filter(card => !state.chain.includes(card.id));
+    }
+
+    function makeCard(card, location, index = null) {
+      const el = document.createElement("article");
+      el.className = "card";
+      el.draggable = true;
+      el.tabIndex = 0;
+      el.dataset.id = card.id;
+      if (state.selectedId === card.id) el.classList.add("selected");
+      if (state.pulledId === card.id) el.classList.add("pulled");
+
+      const badge = location === "chain" ? `<span class="order-badge">${index + 1}</span>` : "";
+      const actions = location === "chain" ? `
+        <div class="card-actions">
+          <button type="button" data-action="up" ${index === 0 ? "disabled" : ""}>Up</button>
+          <button type="button" data-action="down" ${index === state.chain.length - 1 ? "disabled" : ""}>Down</button>
+          <button type="button" data-action="pull">${state.pulledId === card.id ? "Pulled" : "Pull Link"}</button>
+          <button type="button" data-action="remove">Remove</button>
+        </div>
+      ` : "";
+
+      el.innerHTML = `
+        <div class="card-title">${badge}<h3>${card.title}</h3></div>
+        <p>${card.text}</p>
+        <span class="cue">${card.cue}</span>
+        ${actions}
+      `;
+
+      el.addEventListener("dragstart", event => {
+        state.selectedId = card.id;
+        el.classList.add("dragging");
+        event.dataTransfer.setData("text/plain", card.id);
+      });
+
+      el.addEventListener("dragend", () => {
+        el.classList.remove("dragging");
+      });
+
+      el.addEventListener("click", event => {
+        const action = event.target.dataset.action;
+        if (action) {
+          event.stopPropagation();
+          handleCardAction(action, card.id);
+          return;
+        }
+        state.selectedId = state.selectedId === card.id ? null : card.id;
+        render();
+      });
+
+      el.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          state.selectedId = state.selectedId === card.id ? null : card.id;
+          render();
+        }
+      });
+
+      return el;
+    }
+
+    function handleCardAction(action, id) {
+      const index = state.chain.indexOf(id);
+      if (index === -1) return;
+      if (action === "up" && index > 0) {
+        [state.chain[index - 1], state.chain[index]] = [state.chain[index], state.chain[index - 1]];
+      }
+      if (action === "down" && index < state.chain.length - 1) {
+        [state.chain[index + 1], state.chain[index]] = [state.chain[index], state.chain[index + 1]];
+      }
+      if (action === "pull") {
+        state.pulledId = state.pulledId === id ? null : id;
+      }
+      if (action === "remove") {
+        state.chain = state.chain.filter(cardId => cardId !== id);
+        if (state.pulledId === id) state.pulledId = null;
+      }
+      state.selectedId = null;
+      render();
+    }
+
+    function addToChain(id) {
+      if (!id || !cardData(id)) return;
+      state.chain = state.chain.filter(cardId => cardId !== id);
+      state.chain.push(id);
+      state.selectedId = null;
+      render();
+    }
+
+    function removeFromChain(id) {
+      state.chain = state.chain.filter(cardId => cardId !== id);
+      if (state.pulledId === id) state.pulledId = null;
+      state.selectedId = null;
+      render();
+    }
+
+    function renderBank() {
+      bank.innerHTML = "";
+      unplacedCards().forEach(card => bank.appendChild(makeCard(card, "bank")));
+      if (!unplacedCards().length) {
+        const done = document.createElement("div");
+        done.className = "chain-empty";
+        done.textContent = "All cards are in the chain.";
+        bank.appendChild(done);
+      }
+    }
+
+    function renderChain() {
+      chainZone.innerHTML = "";
+      if (!state.chain.length) {
+        const empty = document.createElement("div");
+        empty.className = "chain-empty";
+        empty.textContent = "Drop cards here, or tap a card in the bank and then tap this chain.";
+        chainZone.appendChild(empty);
+        return;
+      }
+
+      state.chain.forEach((id, index) => {
+        if (index > 0) {
+          const arrow = document.createElement("div");
+          arrow.className = "arrow";
+          arrow.innerHTML = "&darr;";
+          chainZone.appendChild(arrow);
+        }
+        chainZone.appendChild(makeCard(cardData(id), "chain", index));
+      });
+    }
+
+    function updateGuide() {
+      guidePanel.innerHTML = guideHtml;
+      guideBtn.classList.toggle("active", !guidePanel.hidden);
+      guideBtn.textContent = guidePanel.hidden ? "Historian Guide" : "Hide Guide";
+    }
+
+    function updateSummary() {
+      const chainText = state.chain
+        .map((id, index) => `${index + 1}. ${cardData(id).title}`)
+        .join("\n") || "No chain built yet.";
+      const pulled = state.pulledId ? cardData(state.pulledId).title : "not chosen yet";
+      pulledResult.textContent = state.pulledId
+        ? `Pulled link: ${cardData(state.pulledId).title}`
+        : "No link pulled yet.";
+      summaryBox.textContent =
+        `Cause chain:\n${chainText}\n\n` +
+        `Pulled link: ${pulled}\n\n` +
+        `Reason: ${responseText.value || ""}`;
+    }
+
+    function render() {
+      renderBank();
+      renderChain();
+      updateGuide();
+      updateSummary();
+      status.textContent = `${state.chain.length} / ${cards.length} in chain`;
+    }
+
+    function setupDrops() {
+      chainZone.addEventListener("dragover", event => {
+        event.preventDefault();
+        chainZone.classList.add("over");
+      });
+      chainZone.addEventListener("dragleave", () => chainZone.classList.remove("over"));
+      chainZone.addEventListener("drop", event => {
+        event.preventDefault();
+        chainZone.classList.remove("over");
+        addToChain(event.dataTransfer.getData("text/plain"));
+      });
+      chainZone.addEventListener("click", event => {
+        if (event.target.closest(".card")) return;
+        if (state.selectedId) addToChain(state.selectedId);
+      });
+
+      bank.addEventListener("dragover", event => {
+        event.preventDefault();
+        bank.classList.add("over");
+      });
+      bank.addEventListener("dragleave", () => bank.classList.remove("over"));
+      bank.addEventListener("drop", event => {
+        event.preventDefault();
+        bank.classList.remove("over");
+        removeFromChain(event.dataTransfer.getData("text/plain"));
+      });
+    }
+
+    async function copySummary() {
+      updateSummary();
+      try {
+        await navigator.clipboard.writeText(summaryBox.textContent);
+        document.getElementById("copyBtn").textContent = "Copied";
+        setTimeout(() => document.getElementById("copyBtn").textContent = "Copy Summary", 1200);
+      } catch (error) {
+        summaryBox.focus();
+      }
+    }
+
+    document.getElementById("addBtn").addEventListener("click", () => addToChain(state.selectedId));
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      state.selectedId = null;
+      render();
+    });
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state.chain = [];
+      state.pulledId = null;
+      state.selectedId = null;
+      render();
+    });
+    guideBtn.addEventListener("click", () => {
+      guidePanel.hidden = !guidePanel.hidden;
+      updateGuide();
+    });
+    document.getElementById("copyBtn").addEventListener("click", copySummary);
+    responseText.addEventListener("input", updateSummary);
+
+    setupDrops();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "1") {
+      state.chain = ["versailles", "depression", "communism", "fascism", "war-aims", "league", "expansion", "appeasement", "pact", "poland"];
+      state.pulledId = "appeasement";
+    }
+    if (params.get("guide") === "1") {
+      guidePanel.hidden = false;
+    }
+    render();
+  </script>
+</body>
+</html>
